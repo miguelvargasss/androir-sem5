@@ -11,7 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
 export default function HomeScreen() {
-  const { user, logout } = useAuth();
+  const { user, userData, logout } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -25,14 +25,17 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">¡Bienvenido, {user?.nombre}!</ThemedText>
+        <ThemedText type="title">¡Bienvenido, {userData?.fullName || 'Usuario'}!</ThemedText>
         <HelloWave />
       </ThemedView>
       
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Sesión Iniciada</ThemedText>
         <ThemedText>
-          Has iniciado sesión exitosamente como <ThemedText type="defaultSemiBold">{user?.usuario}</ThemedText>.
+          Has iniciado sesión exitosamente como <ThemedText type="defaultSemiBold">{userData?.username || 'Usuario'}</ThemedText>.
+        </ThemedText>
+        <ThemedText style={{ marginTop: 8, fontSize: 14, opacity: 0.7 }}>
+          Email: {userData?.email || user?.email}
         </ThemedText>
         
         <TouchableOpacity

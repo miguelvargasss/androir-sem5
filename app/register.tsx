@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -38,25 +39,22 @@ export default function RegisterScreen() {
 
     setLoading(true);
     
-    // Simular un pequeño delay como si fuera una llamada a API
-    setTimeout(() => {
-      const success = register(nombre.trim(), usuario.trim(), contraseña);
-      setLoading(false);
-      
-      if (success) {
-        Alert.alert('Éxito', 'Cuenta creada exitosamente', [
-          {
-            text: 'OK',
-            onPress: () => {
-              // La navegación se manejará automáticamente por el contexto de auth
-              console.log('Registro exitoso');
-            }
+    try {
+      await register(nombre.trim(), usuario.trim(), contraseña);
+      Alert.alert('Éxito', 'Cuenta creada exitosamente', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // La navegación se manejará automáticamente por el contexto de auth
+            console.log('Registro exitoso');
           }
-        ]);
-      } else {
-        Alert.alert('Error', 'El usuario ya existe. Por favor elige otro nombre de usuario.');
-      }
-    }, 500);
+        }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const goToLogin = () => {
@@ -126,13 +124,19 @@ export default function RegisterScreen() {
             </ThemedView>
 
             <TouchableOpacity
-              style={[styles.button, styles.registerButton, { backgroundColor: colors.tint }]}
+              style={[styles.button, styles.registerButton, { 
+                backgroundColor: loading ? colors.tint + '80' : colors.tint 
+              }]}
               onPress={handleRegister}
               disabled={loading}
             >
-              <ThemedText style={[styles.buttonText, { color: '#fff' }]}>
-                {loading ? 'Creando Cuenta...' : 'Registro'}
-              </ThemedText>
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <ThemedText style={[styles.buttonText, { color: '#fff' }]}>
+                  Registro
+                </ThemedText>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity

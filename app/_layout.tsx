@@ -7,7 +7,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 
 function AuthenticatedLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    // Puedes mostrar una pantalla de carga aquí
+    return null;
+  }
   
   if (!isAuthenticated) {
     return (

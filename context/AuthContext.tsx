@@ -1,64 +1,132 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  User
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig';
 
-interface User {
-  id: string;
-  nombre: string;
-  usuario: string;
+interface UserData {
+  fullName: string;
+  username: string;
+  email: string;
+  createdAt: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  userData: UserData | null;
   isAuthenticated: boolean;
-  login: (usuario: string, contraseña: string) => boolean;
-  register: (nombre: string, usuario: string, contraseña: string) => boolean;
-  logout: () => void;
+  isLoading: boolean;
+  login: (usuario: string, contraseña: string) => Promise<void>;
+  register: (nombre: string, usuario: string, contraseña: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Datos de usuarios simulados (en una app real usarías Firebase o una API)
-const users = [
-  { id: '1', nombre: 'Usuario Demo', usuario: 'demo', contraseña: '123456' }
-];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = (usuario: string, contraseña: string): boolean => {
-    const foundUser = users.find(u => u.usuario === usuario && u.contraseña === contraseña);
-    if (foundUser) {
-      setUser({ id: foundUser.id, nombre: foundUser.nombre, usuario: foundUser.usuario });
-      return true;
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      if (user) {
+        // Obtener datos adicionales del usuario desde Firestore
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserData(userDoc.data() as UserData);
+          }
+        } catch (error) {
+          console.error('Error al obtener datos del usuario:', error);
+        }
+      } else {
+        setUserData(null);
+      }
+      setIsLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const login = async (usuario: string, contraseña: string): Promise<void> => {
+    try {
+      // Crear email a partir del username (simulando que el email es username@miapp.com)
+      const email = `${usuario}@miapp.com`;
+      
+      await signInWithEmailAndPassword(auth, email, contraseña);
+      console.log('Inicio de sesión exitoso');
+    } catch (error: any) {
+      console.error('Error al iniciar sesión:', error.message);
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        throw new Error('Usuario o contraseña incorrectos');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Formato de email inválido');
+      } else if (error.code === 'auth/too-many-requests') {
+        throw new Error('Demasiados intentos fallidos. Intenta más tarde.');
+      } else {
+        throw new Error('Error al iniciar sesión. Verifica tus credenciales.');
+      }
     }
-    return false;
   };
 
-  const register = (nombre: string, usuario: string, contraseña: string): boolean => {
-    // Verificar si el usuario ya existe
-    const existingUser = users.find(u => u.usuario === usuario);
-    if (existingUser) {
-      return false; // Usuario ya existe
-    }
+  const register = async (nombre: string, usuario: string, contraseña: string): Promise<void> => {
+    try {
+      // Crear email a partir del username
+      const email = `${usuario}@miapp.com`;
+      
+      // Crear usuario en Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, contraseña);
+      const user = userCredential.user;
 
-    // Crear nuevo usuario
-    const newUser = {
-      id: Date.now().toString(),
-      nombre,
-      usuario,
-      contraseña
-    };
-    users.push(newUser);
-    setUser({ id: newUser.id, nombre: newUser.nombre, usuario: newUser.usuario });
-    return true;
+      // Guardar datos adicionales en Firestore
+      const userData = {
+        fullName: nombre,
+        username: usuario,
+        email: email,
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(doc(db, 'users', user.uid), userData);
+      setUserData(userData);
+
+      console.log('Usuario registrado exitosamente');
+    } catch (error: any) {
+      console.error('Error al registrar usuario:', error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error('Este usuario ya existe. Intenta con otro nombre de usuario.');
+      } else if (error.code === 'auth/weak-password') {
+        throw new Error('La contraseña es muy débil. Debe tener al menos 6 caracteres.');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Formato de email inválido');
+      } else {
+        throw new Error('Error al registrar usuario. Intenta nuevamente.');
+      }
+    }
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async (): Promise<void> => {
+    try {
+      await signOut(auth);
+      setUserData(null);
+      console.log('Sesión cerrada exitosamente');
+    } catch (error: any) {
+      console.error('Error al cerrar sesión:', error.message);
+      throw new Error('Error al cerrar sesión');
+    }
   };
 
   const value = {
     user,
+    userData,
     isAuthenticated: !!user,
+    isLoading,
     login,
     register,
     logout

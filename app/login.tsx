@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -32,18 +33,15 @@ export default function LoginScreen() {
 
     setLoading(true);
     
-    // Simular un pequeño delay como si fuera una llamada a API
-    setTimeout(() => {
-      const success = login(usuario.trim(), contraseña);
+    try {
+      await login(usuario.trim(), contraseña);
+      // La navegación se manejará automáticamente por el contexto de auth
+      console.log('Login exitoso');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
       setLoading(false);
-      
-      if (success) {
-        // La navegación se manejará automáticamente por el contexto de auth
-        console.log('Login exitoso');
-      } else {
-        Alert.alert('Error', 'Usuario o contraseña incorrectos');
-      }
-    }, 500);
+    }
   };
 
   const goToRegister = () => {
@@ -96,13 +94,19 @@ export default function LoginScreen() {
             </ThemedView>
 
             <TouchableOpacity
-              style={[styles.button, styles.loginButton, { backgroundColor: colors.tint }]}
+              style={[styles.button, styles.loginButton, { 
+                backgroundColor: loading ? colors.tint + '80' : colors.tint 
+              }]}
               onPress={handleLogin}
               disabled={loading}
             >
-              <ThemedText style={[styles.buttonText, { color: '#fff' }]}>
-                {loading ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
-              </ThemedText>
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <ThemedText style={[styles.buttonText, { color: '#fff' }]}>
+                  Iniciar Sesión
+                </ThemedText>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
